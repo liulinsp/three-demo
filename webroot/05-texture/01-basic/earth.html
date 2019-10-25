@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>纹理贴图-地球</title>
+    <style>
+        html, body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="demo"></div>
+<script src="../../common/three.js"></script>
+<!--<script src="../../common/controls/TrackballControls.js"></script>-->
+<script type="text/javascript">
+    var width = 0; // 画布的宽度
+    var height = 0; // 画布的高度
+    var scene = null; // 场景
+    var camera = null; // 摄像机
+    var renderer = null; // 渲染器
+    var earth = null; // 球体
+    var v = 0; // 旋转角度
+    var id = null; // 动画ID
+    var isStart = false; // 是否开始动画
+    var lastTime = null; // 上次动画时间
+
+    init();
+
+    // 窗口大小改变后重新初始化
+    window.addEventListener('resize', init);
+
+    function init() {
+        width = window.innerWidth; // 画布的宽度
+        height = window.innerHeight; // 画布的高度
+
+        /* 场景 */
+        scene = createScene();
+
+        /* 光源 */
+        light = createLight();
+        scene.add(light);
+
+        /* 摄像机 */
+        camera = createCamera();
+        scene.add(camera); // 场景中添加相机
+
+        /* 几何体 */
+        earth = createGeom();
+        scene.add(earth); // 场景中添加几何体
+
+        /* 渲染器 */
+        renderer = createRenderer();
+
+        // 进行循环渲染
+        // 旋转动画
+        v = 0; // 旋转角度
+        id = null; // 动画ID
+        isStart = true; // 是否开始动画
+        lastTime = new Date().getTime(); // 上次动画时间
+        render();
+    }
+
+    /* 创建场景 */
+    function createScene () {
+        var scene = new THREE.Scene();// 模糊
+        return scene;
+    }
+
+    /* 创建光源 */
+    function createLight () {
+        lightGroup = new THREE.Group();
+        var ambientLight = new THREE.AmbientLight(0x999999);
+        lightGroup.add(ambientLight);
+
+        var pointLight = new THREE.PointLight( 0xffffff, 1, 0 );
+        pointLight.position.set( -10, 6, 10 );
+
+        lightGroup.add(pointLight);
+        return lightGroup;
+    }
+    /* 创建摄像机 */
+    function createCamera () {
+        var camera = new THREE.PerspectiveCamera(45, width/height, 1, 10);
+        camera.position.set(0, 0, 4);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        return camera
+    }
+
+    /* 创建渲染器 */
+    function createRenderer () {
+        var renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width, height);
+        var parentElement = document.getElementById('demo');
+        parentElement.innerHTML = '';
+        parentElement.appendChild(renderer.domElement);
+        return renderer;
+    }
+
+    /* 创建几何体 */
+    function createGeom () {
+      // 球体
+      var geom = new THREE.SphereGeometry(1, 64, 64);
+      // 纹理
+      var loader = new THREE.TextureLoader();
+      var texture = loader.load('./earth.jpg');
+      // 材质
+      var material = new THREE.MeshLambertMaterial({
+        map: texture,
+        side: THREE.FrontSide
+      });
+      var earth = new THREE.Mesh(geom, material);
+      return earth;
+    }
+
+    // 创建轨迹球
+    function createTrackballControls() {
+        var trackballControls = new THREE.TrackballControls(camera);
+        trackballControls.rotateSpeed = 8.0;
+        trackballControls.zoomSpeed = 1.0;
+        trackballControls.panSpeed = 1.0;
+        trackballControls.noZoom = true; // 禁止缩放
+        // 如设置为true, 则禁用 按下鼠标右键平移的功能???
+        // trackballControls.noPan= false;
+        trackballControls.staticMoving = true;
+        return trackballControls;
+    }
+
+    /* 渲染 */
+    function render() {
+        var curTime = new Date().getTime();
+        v += Math.PI / 5000 * (curTime - lastTime);
+        lastTime = curTime;
+        v = v % (Math.PI * 2)
+        earth.rotation.set(0, v , 0);
+        renderer.render(scene, camera);
+        id = requestAnimationFrame(render);
+    }
+
+</script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>three.js示例</title>
+    <style>
+    html, body{
+        padding:  0;
+        margin: 0;
+        overflow: hidden;
+    }
+    </style>
+</head>
+<body>
+<script src="../common/three.js"></script>
+<script src="../common/controls/TrackballControls.js"></script>
+<script type="text/javascript">
+var width = window.innerWidth; // 画布的宽度
+var height = window.innerHeight; // 画布的高度
+
+/* 场景 */
+var scene = new THREE.Scene();
+scene.add(new THREE.AxesHelper(10)); // 添加坐标轴辅助线
+/*// 网格
+var gridHelper=new THREE.GridHelper(100, 20, 0xffff00, 0x808080);
+gridHelper.position.set(-2, 0, -2);
+scene.add(gridHelper);*/
+
+/* 几何体 */
+var kleinGeom = createKleinGeom();
+scene.add(kleinGeom); // 场景中添加几何体
+
+/* 相机 */
+var camera = new THREE.PerspectiveCamera(45, width/height, 1, 100);
+camera.position.set(5,10,25); // 设置相机的位置
+camera.lookAt(new THREE.Vector3(0, 0, 0)); // 相机看向原点
+
+/* 渲染器 */
+var renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(width, height);
+// 将canvas元素添加到body
+document.body.appendChild(renderer.domElement);
+// 进行渲染
+renderer.render(scene, camera);
+
+// 进行循环渲染
+var clock = new THREE.Clock();
+// 轨迹球
+var trackballControls = new THREE.TrackballControls(camera);
+trackballControls.rotateSpeed = 8.0;
+trackballControls.zoomSpeed = 1.0;
+trackballControls.panSpeed = 1.0;
+trackballControls.noZoom = true; // 禁止缩放
+// 如设置为true, 则禁用 按下鼠标右键平移的功能???
+// trackballControls.noPan= false;
+trackballControls.staticMoving = true;
+// trackballControls.dynamicDampingFactor=0.3;
+render();
+
+// 创建几何体
+function createKleinGeom () {
+    var geom = new THREE.ParametricGeometry( klein, 64, 64 );
+    var matcap = new THREE.TextureLoader().load( './matcap-porcelain-white.jpg');
+    var material =  new THREE.MeshMatcapMaterial({
+        matcap: matcap,
+        side: THREE.DoubleSide
+    });
+    return new THREE.Mesh(geom, material);
+}
+
+function render() {
+    // 获得距离上次调用的时间间隔
+    var delta = clock.getDelta();
+    trackballControls.update(delta);
+    renderer.render(scene, camera);
+    requestAnimationFrame(render);
+}
+
+// 克莱因瓶 函数
+function klein( v, u, target ) {
+    u *= Math.PI;
+    v *= 2 * Math.PI;
+    u = u * 2;
+    var x, y, z;
+    if ( u < Math.PI ) {
+        x = 3 * Math.cos( u ) * ( 1 + Math.sin( u ) ) + ( 2 * ( 1 - Math.cos( u ) / 2 ) ) * Math.cos( u ) * Math.cos( v );
+        z = - 8 * Math.sin( u ) - 2 * ( 1 - Math.cos( u ) / 2 ) * Math.sin( u ) * Math.cos( v );
+    } else {
+        x = 3 * Math.cos( u ) * ( 1 + Math.sin( u ) ) + ( 2 * ( 1 - Math.cos( u ) / 2 ) ) * Math.cos( v + Math.PI );
+        z = - 8 * Math.sin( u );
+    }
+    y = - 2 * ( 1 - Math.cos( u ) / 2 ) * Math.sin( v );
+    target.set( x, y, z );
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>法向量纹理贴图</title>
+    <style>
+        html, body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="demo"></div>
+<script src="../../common/three.js"></script>
+<script src="../../common/controls/TrackballControls.js"></script>
+<script type="text/javascript">
+    var width = 0; // 画布的宽度
+    var height = 0; // 画布的高度
+    var scene = null; // 场景
+    var light = null; // 光源
+    var camera = null; // 摄像机
+    var renderer = null; // 渲染器
+    var loader = null; // 纹理加载器
+    var material = null; // 材质
+    var geom = null; // 几何体
+    var clock = new THREE.Clock(); // 时钟
+    var trackballControls = null; // 轨迹球
+
+    init();
+
+    // 窗口大小改变后重新初始化
+    window.addEventListener('resize', init);
+
+    function init() {
+        width = window.innerWidth; // 画布的宽度
+        height = window.innerHeight; // 画布的高度
+
+        /* 场景 */
+        scene = createScene();
+
+        /* 光源 */
+        light = createLight();
+        scene.add(light);
+
+        /* 摄像机 */
+        camera = createCamera();
+        scene.add(camera); // 场景中添加相机
+
+        /* 几何体 */
+        geom = createGeom();
+        scene.add(geom); // 场景中添加几何体
+
+        /* 渲染器 */
+        renderer = createRenderer();
+
+        // 进行循环渲染
+        trackballControls = createTrackballControls();
+        render();
+    }
+
+    /* 创建场景 */
+    function createScene () {
+        var scene = new THREE.Scene();
+        return scene;
+    }
+
+    /* 创建光源 */
+    function createLight () {
+        lightGroup = new THREE.Group();
+        var ambientLight = new THREE.AmbientLight(0x242424);
+        lightGroup.add(ambientLight);
+
+        var pointLight2 = new THREE.PointLight( 0xffffff, 2, 500 );
+        pointLight2.position.set( -80, 50, 150 );
+
+        lightGroup.add(pointLight2);
+        return lightGroup;
+    }
+
+    /* 创建摄像机 */
+    function createCamera () {
+        var camera = new THREE.PerspectiveCamera(45, width/height, 1, 100);
+        camera.position.set(20, 20, 60);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        return camera
+    }
+
+    /* 创建渲染器 */
+    function createRenderer () {
+        var renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width, height);
+        var parentElement = document.getElementById('demo');
+        parentElement.innerHTML = '';
+        parentElement.appendChild(renderer.domElement);
+        return renderer;
+    }
+
+    /* 创建几何体 */
+    function createGeom () {
+        // 几何体
+        var geom = new THREE.CubeGeometry(24, 24, 24);
+        // geom.computeFaceNormals();
+        geom.computeVertexNormals();
+        // 纹理加载器
+        loader = new THREE.TextureLoader();
+        // 纹理
+        var texture = loader.load( './metal.jpg');
+        // 法向量纹理
+        var normalTexture = loader.load( './metal-normal.jpg');
+        material =  new THREE.MeshPhongMaterial( {
+            map: texture,
+            normalMap: normalTexture
+        } );
+        var mesh = new THREE.Mesh(geom, material);
+        // mesh.rotation.set(Math.PI / 12, -Math.PI / 24, 0);
+        return mesh;
+    }
+
+    // 创建轨迹球
+    function createTrackballControls() {
+        var trackballControls = new THREE.TrackballControls(camera);
+        trackballControls.rotateSpeed = 8.0;
+        trackballControls.zoomSpeed = 1.0;
+        trackballControls.panSpeed = 1.0;
+        trackballControls.noZoom = true; // 禁止缩放
+        // 如设置为true, 则禁用 按下鼠标右键平移的功能???
+        // trackballControls.noPan= false;
+        trackballControls.staticMoving = true;
+        return trackballControls;
+    }
+
+    /* 渲染 */
+    function render() {
+        // 获得距离上次调用的时间间隔
+        var delta = clock.getDelta();
+        trackballControls.update(delta);
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+    }
+
+</script>
+</body>
+</html>

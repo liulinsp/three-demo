@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>着色器-火焰</title>
+  <style>
+    html, body{
+      padding:  0;
+      margin: 0;
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+<div id="demo"></div>
+
+<script id="test6_fragment_shader" type="x-shader/x-fragment">
+uniform float iTime;
+uniform vec2 iResolution;
+uniform sampler2D iChannel0;
+vec2 iMouse = vec2(0.0, 0.0);
+
+float noise(vec3 p) //Thx to Las^Mercury
+{
+	vec3 i = floor(p);
+	vec4 a = dot(i, vec3(1., 57., 21.)) + vec4(0., 57., 21., 78.);
+	vec3 f = cos((p-i)*acos(-1.))*(-.5)+.5;
+	a = mix(sin(cos(a)*a),sin(cos(1.+a)*(1.+a)), f.x);
+	a.xy = mix(a.xz, a.yw, f.y);
+	return mix(a.x, a.y, f.z);
+}
+
+float sphere(vec3 p, vec4 spr)
+{
+	return length(spr.xyz-p) - spr.w;
+}
+
+float flame(vec3 p)
+{
+	float d = sphere(p*vec3(1.,.5,1.), vec4(.0,-1.,.0,1.));
+	return d + (noise(p+vec3(.0,iTime*2.,.0)) + noise(p*3.)*.5)*.25*(p.y) ;
+}
+
+float scene(vec3 p)
+{
+	return min(100.-length(p) , abs(flame(p)) );
+}
+
+vec4 raymarch(vec3 org, vec3 dir)
+{
+	float d = 0.0, glow = 0.0, eps = 0.02;
+	vec3  p = org;
+	bool glowed = false;
+
+	for(int i=0; i<64; i++)
+	{
+		d = scene(p) + eps;
+		p += d * dir;
+		if( d>eps )
+		{
+			if(flame(p) < .0)
+				glowed=true;
+			if(glowed)
+       			glow = float(i)/64.;
+		}
+	}
+	return vec4(p,glow);
+}
+
+void main()
+{
+	vec2 v = -1.0 + 2.0 * gl_FragCoord.xy / iResolution.xy;
+	v.x *= iResolution.x/iResolution.y;
+
+	vec3 org = vec3(0., -2., 4.);
+	vec3 dir = normalize(vec3(v.x*1.6, -v.y, -1.5));
+
+	vec4 p = raymarch(org, dir);
+	float glow = p.w;
+
+	vec4 col = mix(vec4(1.,.5,.1,1.), vec4(0.1,.5,1.,1.), p.y*.02+.4);
+
+	gl_FragColor = mix(vec4(0.), col, pow(glow*2.,4.));
+	// gl_FragColor = mix(vec4(1.), mix(vec4(1.,.5,.1,1.),vec4(0.1,.5,1.,1.),p.y*.02+.4), pow(glow*2.,4.));
+
+}
+</script>
+<script id="test6_vertexShader" type="x-shader/x-vertex">
+	void main()
+	{
+		vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );
+		gl_Position = projectionMatrix * mvPosition;
+	}
+</script>
+
+<script src="../../common/three.js"></script>
+<script type="text/javascript">
+    var width = 0; // 画布的宽度
+    var height = 0; // 画布的高度
+    var scene = null; // 场景
+    var camera = null; // 摄像机
+    var renderer = null; // 渲染器
+    var geom = null; // 几何体
+    var uniforms = null; // 着色器使用参数
+    var clock = new THREE.Clock(); // 时钟
+
+    init();
+
+    // 窗口大小改变后重新初始化
+    window.addEventListener('resize', init);
+
+    function init() {
+        width = window.innerWidth; // 画布的宽度
+        height = window.innerHeight; // 画布的高度
+
+        /* 场景 */
+        scene = createScene();
+
+        /* 摄像机 */
+        camera = createCamera();
+        scene.add(camera); // 场景中添加相机
+
+        /* 几何体 */
+        geom = createGeom();
+        scene.add(geom); // 场景中添加几何体
+
+        /* 渲染器 */
+        renderer = createRenderer();
+
+        render();
+    }
+
+    /* 创建场景 */
+    function createScene () {
+        var scene = new THREE.Scene();
+        // 坐标轴
+        var axesHelper=new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+
+        /*// 网格
+        var gridHelper=new THREE.GridHelper(100, 20, 0xffff00, 0x808080);
+        gridHelper.position.set(-2, 0, -2);
+        scene.add(gridHelper);*/
+        return scene;
+    }
+    /* 创建摄像机 */
+    function createCamera () {
+        var camera = new THREE.PerspectiveCamera(45, width/height, 1, 2000);
+        camera.position.set(0,0,360);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        return camera
+    }
+
+    /* 创建渲染器 */
+    function createRenderer () {
+        var renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width, height);
+        var parentElement = document.getElementById('demo');
+        parentElement.innerHTML = '';
+        parentElement.appendChild(renderer.domElement);
+        return renderer;
+    }
+
+    /* 创建几何体 */
+    function createGeom () {
+        uniforms = {
+            iTime: { value: 1.0 },
+            iResolution: { value: new THREE.Vector2(width * 1.0, height * 1.0)}
+        }
+
+        var material = new THREE.ShaderMaterial( {
+            uniforms: uniforms,
+            vertexShader: document.getElementById( 'test6_vertexShader' ).textContent,
+            fragmentShader: document.getElementById('test6_fragment_shader').textContent
+        });
+
+        var geom = new THREE.PlaneBufferGeometry(width, height);
+        var mesh = new THREE.Mesh( geom, material );
+        return mesh;
+    }
+
+    /* 渲染 */
+    function render() {
+        // 获得距离上次调用的时间间隔
+        var delta = clock.getDelta();
+        uniforms.iTime.value += delta;
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+    }
+</script>
+</body>

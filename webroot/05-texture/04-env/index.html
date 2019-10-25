@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>环境贴图</title>
+    <style>
+        html, body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="demo"></div>
+<script src="../../common/three.js"></script>
+<!--<script src="../../common/controls/OrbitControls.js"></script>-->
+<script type="text/javascript">
+    var width = 0; // 画布的宽度
+    var height = 0; // 画布的高度
+    var scene = null; // 场景
+    var camera = null; // 摄像机
+    var cubeCamera = null; // 立方相机,用于生成环境贴图
+    var renderer = null; // 渲染器
+    var balls = null; // 球体
+    var target = null; // 相机目标
+    var material = null; // 材质
+
+    var lon = 90, lat = 0;
+    var phi = 0, theta = 0;
+
+    init();
+
+    // 窗口大小改变后重新初始化
+    window.addEventListener('resize', init);
+    document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+    document.addEventListener( 'wheel', onDocumentMouseWheel, false );
+    document.addEventListener( 'touchstart', onDocumentTouchStart, false );
+    document.addEventListener( 'touchmove', onDocumentTouchMove, false );
+
+    function init() {
+        width = window.innerWidth; // 画布的宽度
+        height = window.innerHeight; // 画布的高度
+
+        /* 场景 */
+        scene = createScene();
+
+        /* 摄像机 */
+        camera = createCamera();
+        scene.add(camera); // 场景中添加相机
+
+        /* 几何体 */
+        balls = createGeom();
+        scene.add(balls); // 场景中添加几何体
+
+        /* 渲染器 */
+        renderer = createRenderer();
+
+        // 进行循环渲染
+        lon = 90;
+        lat = 0;
+        phi = 0;
+        theta = 0;
+        render();
+    }
+
+    /* 创建场景 */
+    function createScene () {
+        var scene = new THREE.Scene();// 模糊
+        // 设置背景图片
+        scene.background = new THREE.CubeTextureLoader()
+            .setPath( './bridge/' )
+            .load([
+                'r.jpg', 'l.jpg', 'u.jpg', 'd.jpg', 'f.jpg', 'b.jpg'
+            ]);
+        return scene;
+    }
+
+    /* 创建摄像机 */
+    function createCamera () {
+        var camera = new THREE.PerspectiveCamera(45, width/height, 1, 1000);
+        target = new THREE.Vector3(0, 0, 1);
+        camera.position.set(0, 0, 0);
+        camera.lookAt(target);
+        return camera
+    }
+
+    /* 创建渲染器 */
+    function createRenderer () {
+        var renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width, height);
+        var parentElement = document.getElementById('demo');
+        parentElement.innerHTML = '';
+        parentElement.appendChild(renderer.domElement);
+        return renderer;
+    }
+
+    /* 创建几何体 */
+    function createGeom () {
+        var group = new THREE.Group();
+        // 球体
+        var geom = new THREE.SphereBufferGeometry( 10, 32, 16 );
+        // 立方相机
+        cubeCamera = new THREE.CubeCamera( 1, 10000, 128 );
+        // 材质
+        material = new THREE.MeshBasicMaterial( {
+            envMap: cubeCamera.renderTarget.texture
+        });
+
+        for ( var i = 0; i < 50; i ++ ) {
+            var mesh = new THREE.Mesh( geom, material );
+            mesh.position.x = Math.random() * 500 - 250;
+            mesh.position.y = Math.random() * 500 - 250;
+            mesh.position.z = Math.random() * 500 - 250;
+            mesh.scale.x = mesh.scale.y = mesh.scale.z = Math.random() * 3 + 1;
+            mesh.add(cubeCamera);
+            group.add(mesh);
+        }
+        return group;
+    }
+
+    /* 渲染 */
+    function render() {
+        lon +=  0.1;
+        lat = Math.max( - 85, Math.min( 85, lat ) );
+        phi = THREE.Math.degToRad( 90 - lat );
+        theta = THREE.Math.degToRad( lon );
+        target.x = Math.sin( phi ) * Math.cos( theta );
+        target.y = Math.cos( phi );
+        target.z = Math.sin( phi ) * Math.sin( theta );
+        camera.lookAt( target );
+
+        balls.children.forEach(function (ball){
+            balls.visible = false;
+        });
+        cubeCamera.update( renderer, scene );
+        balls.children.forEach(function (ball){
+            balls.visible = true;
+        });
+
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+    }
+
+    function onDocumentMouseDown( event ) {
+        event.preventDefault();
+        document.addEventListener( 'mousemove', onDocumentMouseMove, false );
+        document.addEventListener( 'mouseup', onDocumentMouseUp, false );
+    }
+    function onDocumentMouseMove( event ) {
+        var movementX = event.movementX || event.mozMovementX || event.webkitMovementX || 0;
+        var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
+        lon -= movementX * 0.1;
+        lat += movementY * 0.1;
+    }
+    function onDocumentMouseUp( event ) {
+        document.removeEventListener( 'mousemove', onDocumentMouseMove );
+        document.removeEventListener( 'mouseup', onDocumentMouseUp );
+    }
+
+    function onDocumentMouseWheel( event ) {
+        var fov = camera.fov + event.deltaY * 0.05;
+        camera.fov = THREE.Math.clamp( fov, 10, 75 );
+        camera.updateProjectionMatrix();
+    }
+
+    var touchX, touchY;
+    function onDocumentTouchStart( event ) {
+        event.preventDefault();
+        var touch = event.touches[ 0 ];
+        touchX = touch.screenX;
+        touchY = touch.screenY;
+    }
+    function onDocumentTouchMove( event ) {
+        event.preventDefault();
+        var touch = event.touches[ 0 ];
+        lon -= ( touch.screenX - touchX ) * 0.1;
+        lat += ( touch.screenY - touchY ) * 0.1;
+        touchX = touch.screenX;
+        touchY = touch.screenY;
+    }
+
+</script>
+</body>

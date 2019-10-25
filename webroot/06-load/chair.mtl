@@ -1,0 +1,13 @@
+# Blender MTL File: 'misc_chair01.blend'
+# Material Count: 1
+
+newmtl misc_chair01
+Ns 96.078431
+Ka 1.000000 1.000000 1.000000
+Kd 0.531326 0.250742 0.147920
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.000000
+d 1.000000
+illum 1
+map_Kd misc_chair01_col.jpg

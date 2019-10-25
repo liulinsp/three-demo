@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>光源</title>
+    <style>
+        html, body{
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+<div id="demo"></div>
+<script src="../common/three.js"></script>
+<script src="../common/controls/TrackballControls.js"></script>
+<script type="text/javascript">
+    var width = 0; // 画布的宽度
+    var height = 0; // 画布的高度
+    var scene = null; // 场景
+    var camera = null; // 摄像机
+    var renderer = null; // 渲染器
+    var lightGroup = null; // 光源
+    var clock = new THREE.Clock(); // 时钟
+    var trackballControls = null; // 轨迹球
+    var step = 1;
+
+    init();
+
+    // 窗口大小改变后重新初始化
+    window.addEventListener('resize', init);
+
+    document.addEventListener('keydown', function (e) {
+        console.log(e.key)
+        if(e.key == 'Backspace'){
+            step > 1 ? step-- : step = 5 ;
+            scene.remove(lightGroup);
+            lightGroup = createLight();
+            scene.add(lightGroup);
+        }else if(e.key == 'Enter'){
+            step < 5 ? step++ : step = 1 ;
+            scene.remove(lightGroup);
+            lightGroup = createLight();
+            scene.add(lightGroup);
+        }
+    })
+
+    function init() {
+        width = window.innerWidth; // 画布的宽度
+        height = window.innerHeight; // 画布的高度
+
+        /* 场景 */
+        scene = createScene();
+
+        /* 光源 */
+        light = createLight();
+        scene.add(light);
+
+        /* 摄像机 */
+        camera = createCamera();
+        scene.add(camera); // 场景中添加相机
+
+        /* 几何体 */
+        geom = createGeom();
+        scene.add(geom); // 场景中添加几何体
+
+        /* 渲染器 */
+        renderer = createRenderer();
+
+        // 进行循环渲染
+        trackballControls = createTrackballControls();
+        render();
+    }
+
+    /* 创建场景 */
+    function createScene () {
+        var scene = new THREE.Scene();// 模糊
+        scene.fog = new THREE.Fog( 0, 10, 100 );
+
+        return scene;
+    }
+
+    /* 创建光源 */
+    function createLight () {
+       lightGroup = new THREE.Group();
+        if (step == 1 || step == 5) {
+            // 点光源
+            var pointLight = new THREE.PointLight(0xffaa00, 1, 5000);
+            pointLight.position.set( -5, -4, 5 );
+            pointLight.castShadow = true;
+            lightGroup.add(pointLight);
+
+            // 添加光源圆球
+            var sphereGeometry = new THREE.SphereGeometry( 0.2, 16, 16 );
+            var sphereMaterial = new THREE.MeshBasicMaterial( { color: 0xff2200 });
+            var lightSphere = new THREE.Mesh( sphereGeometry, sphereMaterial );
+            lightSphere.position.set(-5, -4, 5);
+            lightGroup.add(lightSphere)
+        } else if (step == 2) {
+            // 平行光
+            var directionalLight = new THREE.DirectionalLight(0xffaa00);
+            directionalLight.position.set( -5, 5, 15 );
+            var target = new THREE.Object3D();
+            target.position.set(0, -5, 0);
+            directionalLight.target = target;
+            directionalLight.castShadow = true;
+            lightGroup.add(directionalLight);
+
+            // 添加平行光线
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices = [new THREE.Vector3(-5, 4, 15), new THREE.Vector3(0, -5, 0),];
+            lineGeometry.colors = [new THREE.Color(0xff2200), new THREE.Color(0xff2200)];
+            var singleLineMaterial = new THREE.LineBasicMaterial({
+                color: 0xff2200,
+                vertexColors: THREE.VertexColors
+            });
+            var line = new THREE.Line(lineGeometry, singleLineMaterial);
+            lightGroup.add(line);
+        } else if (step == 3) {
+            // 聚光灯
+            var target = new THREE.Object3D();
+            target.position.set(0, -5, 0);
+            /*var spotLight1 = new THREE.SpotLight(0xaaccff, 1, 0, Math.PI / 6, 0.01);
+            spotLight1.position.set(-50, 50, 50);*/
+            var spotLight1 = new THREE.SpotLight(0xaaccff, 1, 0, Math.PI / 6, 0.01);
+            spotLight1.position.set(0, 20, 10);
+            spotLight1.target = target; // 设置目标物体
+            spotLight1.castShadow = true;
+            lightGroup.add(spotLight1);
+
+            /*var spotLight2 = new THREE.SpotLight(0xfcfaff, 1, 0, Math.PI / 6, 0.01);
+            spotLight2.position.set(50, 50, 50);
+            spotLight2.target = target; // 设置目标物体
+            spotLight2.castShadow = true;
+            lightGroup.add(spotLight2);*/
+        }
+        if (step == 4 || step == 5) {
+            console.log(step)
+            // 环境光
+            // var ambientLight = new THREE.AmbientLight(0x3f2806);
+            var ambientLight = new THREE.AmbientLight(0x1A1005);
+            lightGroup.add(ambientLight);
+        }
+        return lightGroup;
+    }
+    /* 创建摄像机 */
+    function createCamera () {
+        var camera = new THREE.PerspectiveCamera(45, width/height, 1, 100);
+        camera.position.set(0, 0, 25);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        return camera
+    }
+
+    /* 创建渲染器 */
+    function createRenderer () {
+        var renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width, height);
+        var parentElement = document.getElementById('demo');
+        parentElement.innerHTML = '';
+        parentElement.appendChild(renderer.domElement);
+        // 告诉渲染器渲染阴影
+        renderer.shadowMap.enabled = true;
+        // 软阴影(默认：THREE.PCFShadowMap)
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        // 所有纹理和颜色进行γ
+        renderer.gammaInput = true;
+        // 所有的纹理和颜色都需要进行γ输出
+        renderer.gammaOutput = true;
+        return renderer;
+    }
+
+    /* 创建几何体 */
+    function createGeom () {
+        var group = new THREE.Group();
+
+        // 地面
+        var groundMaterial = new THREE.MeshPhongMaterial( {
+            shininess: 80,
+            color: 0xffffff,
+            specular: 0xffffff,
+        } );
+        var planeGeometry = new THREE.PlaneBufferGeometry( 100, 100 );
+        var ground = new THREE.Mesh( planeGeometry, groundMaterial );
+        ground.position.set( 0, -5, 0 );
+        ground.rotation.x = - Math.PI / 2;
+        ground.scale.set( 1000, 1000, 1000 );
+        ground.receiveShadow = true;
+        group.add(ground);
+
+        // 几何体
+        var geom = new THREE.CubeGeometry(2, 15, 2);
+        // 材质
+        var cubeMaterial = new THREE.MeshPhongMaterial( { color: 0xffffff } );
+        var cube = new THREE.Mesh(geom, cubeMaterial);
+        cube.rotation.y = - Math.PI / 8;
+        cube.material.color.offsetHSL( 0.1, -0.1, 0 );
+        cube.castShadow = true;
+        group.add(cube);
+
+
+        return group;
+    }
+
+    // 创建轨迹球
+    function createTrackballControls() {
+        var trackballControls = new THREE.TrackballControls(camera);
+        trackballControls.rotateSpeed = 8.0;
+        trackballControls.zoomSpeed = 1.0;
+        trackballControls.panSpeed = 1.0;
+        trackballControls.noZoom = true; // 禁止缩放
+        // 如设置为true, 则禁用 按下鼠标右键平移的功能???
+        // trackballControls.noPan= false;
+        trackballControls.staticMoving = true;
+        return trackballControls;
+    }
+
+    /* 渲染 */
+    function render() {
+        // 获得距离上次调用的时间间隔
+        var delta = clock.getDelta();
+        trackballControls.update(delta);
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+    }
+
+</script>
+</body>
+</html>

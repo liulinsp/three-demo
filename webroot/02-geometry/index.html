@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>几何体</title>
+    <style>
+    html, body{
+        padding: 0;
+        margin: 0;
+        overflow: hidden;
+    }
+    </style>
+</head>
+<body>
+<div id="demo"></div>
+<script src="../common/three.js"></script>
+<script src="../common/controls/TrackballControls.js"></script>
+<script type="text/javascript">
+    var width = 0; // 画布的宽度
+    var height = 0; // 画布的高度
+    var scene = null; // 场景
+    var camera = null; // 摄像机
+    var renderer = null; // 渲染器
+    var geom = null; // 几何体
+    var clock = new THREE.Clock(); // 时钟
+    var trackballControls = null; // 轨迹球
+    var step = 0; // 当前步骤
+    // 几何体顶点数组
+    var vertices = [
+        new THREE.Vector3(1, 1, 1),
+        new THREE.Vector3(1, 1, -1),
+        new THREE.Vector3(1, -1, 1),
+        new THREE.Vector3(1, -1, -1),
+        new THREE.Vector3(-1, 1, -1),
+        new THREE.Vector3(-1, 1, 1),
+        new THREE.Vector3(-1, -1, -1),
+        new THREE.Vector3(-1, -1, 1)
+    ];
+    init();
+
+    // 双击添加顶点
+    document.addEventListener('dblclick', function (e) {
+        step < 8 ? step++ : step = 8 ;
+        scene.remove(geom);
+        geom = createGeom();
+        scene.add(geom);
+    })
+    // 按下Enter添加顶点，按下Backspace键删除顶点
+    document.addEventListener('keydown', function (e) {
+        console.log(e.key)
+        if(e.key == 'Backspace'){
+            step > 0 ? step-- : step = 0 ;
+            scene.remove(geom);
+            geom = createGeom();
+            scene.add(geom);
+        }else if(e.key == 'Enter'){
+            step < 8 ? step++ : step = 8 ;
+            scene.remove(geom);
+            geom = createGeom();
+            scene.add(geom);
+        }
+    })
+    // 窗口大小改变后重新初始化
+    window.addEventListener('resize', init);
+
+    function init() {
+        width = window.innerWidth; // 画布的宽度
+        height = window.innerHeight; // 画布的高度
+        step = 0; // 当前步骤
+
+        /* 场景 */
+        scene = createScene();
+
+        /* 摄像机 */
+        camera = createCamera();
+        scene.add(camera); // 场景中添加相机
+
+        /* 几何体 */
+        geom = createGeom();
+        scene.add(geom); // 场景中添加几何体
+
+        /* 渲染器 */
+        renderer = createRenderer();
+
+        // 进行循环渲染
+        trackballControls = createTrackballControls();
+        render();
+    }
+
+    /* 创建场景 */
+    function createScene () {
+        var scene = new THREE.Scene();
+        // 坐标轴
+        var axesHelper=new THREE.AxesHelper(10);
+        scene.add(axesHelper);
+
+        /*// 网格
+        var gridHelper=new THREE.GridHelper(100, 20, 0xffff00, 0x808080);
+        gridHelper.position.set(-2, 0, -2);
+        scene.add(gridHelper);*/
+        return scene;
+    }
+    /* 创建摄像机 */
+    function createCamera () {
+        var camera = new THREE.PerspectiveCamera(45, width/height, 1, 100);
+        camera.position.set(-4,3,8);
+        camera.lookAt(new THREE.Vector3(0, 0, 0));
+        return camera
+    }
+
+    /* 创建渲染器 */
+    function createRenderer () {
+        var renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width, height);
+        var parentElement = document.getElementById('demo');
+        parentElement.innerHTML = '';
+        parentElement.appendChild(renderer.domElement);
+        return renderer;
+    }
+
+    /* 创建几何体 */
+    function createGeom () {
+        var group = new THREE.Group();
+        var curVertices = vertices.slice(0, step > 8 ? 8 : step)
+
+        if (step >= 3) {
+            // 几何体
+            var geometry = new THREE.Geometry();
+            geometry.vertices = curVertices;
+            step > 2 && geometry.faces.push(new THREE.Face3(0, 2, 1));
+            step > 3 && geometry.faces.push(new THREE.Face3(2, 3, 1));
+            step > 6 && geometry.faces.push(new THREE.Face3(4, 6, 5));
+            step > 7 && geometry.faces.push(new THREE.Face3(6, 7, 5));
+            step > 5 && geometry.faces.push(new THREE.Face3(4, 5, 1));
+            step > 5 && geometry.faces.push(new THREE.Face3(5, 0, 1));
+            step > 7 && geometry.faces.push(new THREE.Face3(7, 6, 2));
+            step > 6 && geometry.faces.push(new THREE.Face3(6, 3, 2));
+            step > 7 && geometry.faces.push(new THREE.Face3(5, 7, 0));
+            step > 7 && geometry.faces.push(new THREE.Face3(7, 2, 0));
+            step > 4 && geometry.faces.push(new THREE.Face3(1, 3, 4));
+            step > 6 && geometry.faces.push(new THREE.Face3(3, 6, 4));
+            // 添加面
+            var faceMaterial = new THREE.MeshBasicMaterial( {
+                color: 0xffffff,
+                opacity: 0.5,
+                transparent: true,
+                side: THREE.DoubleSide
+            } );
+            var faces = new THREE.Mesh(geometry, faceMaterial);
+            group.add(faces);
+
+
+            // 添加线
+            var lineMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ffff,
+                wireframe: true
+            })
+            var lines = new THREE.Mesh(geometry, lineMaterial);
+            group.add(lines);
+        } else if (step == 2 ) {
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices = curVertices;
+            lineGeometry.colors = [new THREE.Color(0x00ffff), new THREE.Color(0x00ffff)];
+            var singleLineMaterial = new THREE.LineBasicMaterial({
+                color: 0x00ffff,
+                vertexColors: THREE.VertexColors
+            });
+            var line = new THREE.Line(lineGeometry, singleLineMaterial);
+            group.add(line);
+        }
+
+        // 添加顶点
+        var texture = new THREE.TextureLoader().load( './disc.png' );
+        var pointsMaterial = new THREE.PointsMaterial( {
+            color: 0x0080ff,
+            map: texture,
+            size: 0.5,
+            alphaTest: 0.5,
+            depthTest: true
+        });
+        var pointsGeometry = new THREE.BufferGeometry().setFromPoints(curVertices);
+        var points = new THREE.Points( pointsGeometry, pointsMaterial );
+        group.add(points);
+        return group;
+    }
+
+    // 创建轨迹球
+    function createTrackballControls() {
+        var trackballControls = new THREE.TrackballControls(camera);
+        trackballControls.rotateSpeed = 8.0;
+        trackballControls.zoomSpeed = 1.0;
+        trackballControls.panSpeed = 1.0;
+        trackballControls.noZoom = true; // 禁止缩放
+        // 如设置为true, 则禁用 按下鼠标右键平移的功能???
+        // trackballControls.noPan= false;
+        trackballControls.staticMoving = true;
+        return trackballControls;
+    }
+
+    /* 渲染 */
+    function render() {
+        // 获得距离上次调用的时间间隔
+        var delta = clock.getDelta();
+        trackballControls.update(delta);
+        renderer.render(scene, camera);
+        requestAnimationFrame(render);
+    }
+</script>
+</body>
+</html>
